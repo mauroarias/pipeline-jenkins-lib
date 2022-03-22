@@ -11,53 +11,47 @@ def call(body) {
             disableConcurrentBuilds()
         }
         stages {
+            stage('load library') {
+                steps {
+                    script { 
+                        project = env.JOB_NAME.split('/')[0]
+                        projectName = sh(script: "echo '${project}' | sed 's/PRJ-//'", returnStdout: true)
+                        new org.mauro.LibLoader().loadLib()
+                        templateLib.configUsingManifest()
+                        agentName = templateLib.getTemplateAgent()
+                    }
+                }
+            }
             stage('Setup') {
                 parallel {
-                    stage('Initialize') {
-                            stages {
-                                stage('load library') {
-                                    steps {
-                                        script { 
-                                            project = env.JOB_NAME.split('/')[0]
-                                            projectName = sh(script: "echo '${project}' | sed 's/PRJ-//'", returnStdout: true)
-
-                                            def loadingLib = new org.mauro.LibLoader()
-                                            loadingLib.loadLib()
-
-                                            type = templateLib.getCiType()
-                                            agentImage = templateLib.getAgent("${type}")
-                                        }
-                                    }
-                                }
-                                stage('load vars') {
-                                    agent {
-                                        docker {
-                                            image "${agentImage}"
-                                        }
-                                    }                
-                                    steps {
-                                        script { 
-                                            appversion = templateLib.getAppVersion("${type}")
-                                            serviceName = templateLib.getAppServiceName("${type}")
-                                            artifactId = templateLib.getArtifactId("${type}")
-                                            groupId = templateLib.getgroupId("${type}")
-                                            app = "${artifactId}-${appversion}"
-                                            image = "${artifactId}:${appversion}"
-                                            sh "echo 'project name: ${projectName}'"
-                                            sh "echo 'app version: ${appversion}'"
-                                            sh "echo 'service description: ${serviceName}'"
-                                            sh "echo 'artifact id: ${artifactId}'"
-                                            sh "echo 'group id: ${groupId}'"
-                                            sh "echo 'app: ${app}'"
-                                            sh "echo 'image: ${image}'"
-                                        }
-                                    }
-                                }
+                    stage('load vars') {
+                        agent {
+                            docker {
+                                image "${agentName}"
                             }
+                        }                
+                        steps {
+                            script { 
+                                appversion = templateLib.getAppVersion()
+                                serviceName = templateLib.getAppServiceName()
+                                artifactId = templateLib.getArtifactId()
+                                groupId = templateLib.getgroupId()
+                                app = "${artifactId}-${appversion}"
+                                image = "${artifactId}:${appversion}"
+                                sh "echo 'project name: ${projectName}'"
+                                sh "echo 'app version: ${appversion}'"
+                                sh "echo 'service description: ${serviceName}'"
+                                sh "echo 'artifact id: ${artifactId}'"
+                                sh "echo 'group id: ${groupId}'"
+                                sh "echo 'app: ${app}'"
+                                sh "echo 'image: ${image}'"
+                            }
+                        }
                     }
                     stage('Validation') {
                         steps {
-                            script { 
+                            script {
+                                sonarLib.validateEnvVars()
                                 if (env.CHANGE_TARGET.equals('stage') && !env.CHANGE_TARGET.equals('develop')) {
                                     error("You must merge to 'stage' from 'develop'...!")
                                 }
@@ -75,15 +69,16 @@ def call(body) {
                 }
                 agent {
                     docker {
-                        image "${agentImage}"
+                        image "${agentName}"
                     }
                 }                
                 steps {
-                    script { 
-                        sh 'mvn clean package'
-                        jenkinsLib.stash('codeBuilt', 'target/**/*', '')
-                        jenkinsLib.archiveArtifacts("target/${app}.jar")
-                        jenkinsLib.publishingHTML('code coverage', 'code coverage report', 'target/jacoco-report/', 'index.html', true)
+                    script {
+                        templateLib.build()
+                        outFolder = templateLib.getOutFolder()
+                        jenkinsLib.stash('codeBuilt', "${outFolder}**/*", '')
+                        jenkinsLib.archiveArtifacts("${outFolder}${app}.jar")
+                        templateLib.publishTestCoverageReport()
                     }
                 }
             }
@@ -111,9 +106,30 @@ def call(body) {
                         }
                     }
                     stage('Sonar') {
-                        steps {
-                            script {
-                                sh "echo 'add sonar'"
+                        stages {
+                            environment {
+                                SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
+                            }
+                            stage('Create project') {
+                                steps {
+                                    script {
+                                        sonarLib.createProjetIfNotExists(projectName, artifactId)
+                                    }
+                                }
+                            }
+                            stage('push analise') {
+                                steps {
+                                    script {
+                                        sonarLib.pushSonarArtifact(projectName, artifactId)
+                                    }
+                                }
+                            }
+                            stage('check analise') {
+                                steps {
+                                    script {
+                                        sonarLib.createProjetIfNotExists(projectName, artifactId)
+                                    }
+                                }
                             }
                         }
                     }       
