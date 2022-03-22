@@ -107,27 +107,36 @@ def call(body) {
                     }
                     stage('Sonar') {
                         stages {
-                            environment {
-                                SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
-                            }
                             stage('Create project') {
+                                environment {
+                                    SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
+                                    SONAR_TOKEN = credentials('sonar-token')
+                                }
                                 steps {
                                     script {
-                                        sonarLib.createProjetIfNotExists(projectName, artifactId)
+                                        sonarLib.createProjetIfNotExists(artifactId)
                                     }
                                 }
                             }
                             stage('push analise') {
+                                environment {
+                                    SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
+                                    SONAR_TOKEN = credentials('sonar-token')
+                                }
                                 steps {
                                     script {
-                                        sonarLib.pushSonarArtifact(projectName, artifactId)
+                                        sonarLib.pushSonarArtifact(artifactId)
                                     }
                                 }
                             }
                             stage('check analise') {
+                                environment {
+                                    SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
+                                    SONAR_TOKEN = credentials('sonar-token')
+                                }
                                 steps {
                                     script {
-                                        sonarLib.createProjetIfNotExists(projectName, artifactId)
+                                        sonarLib.qualityGate(artifactId)
                                     }
                                 }
                             }
