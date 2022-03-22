@@ -4,6 +4,8 @@ def call(body) {
     body.delegate = params
     body()
 
+    def agentName
+
     pipeline {
         agent any
         options {
