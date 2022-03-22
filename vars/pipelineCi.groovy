@@ -51,7 +51,6 @@ def call(body) {
                     stage('Validation') {
                         steps {
                             script {
-                                sonarLib.validateEnvVars()
                                 if (env.CHANGE_TARGET.equals('stage') && !env.CHANGE_TARGET.equals('develop')) {
                                     error("You must merge to 'stage' from 'develop'...!")
                                 }
