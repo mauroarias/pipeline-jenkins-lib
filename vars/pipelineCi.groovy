@@ -119,7 +119,7 @@ def call(body) {
                                     }
                                 }
                             }
-                            stage('push analise') {
+                            stage('push artifact') {
                                 environment {
                                     SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
                                     SONAR_TOKEN = credentials('sonar-token')
@@ -130,7 +130,7 @@ def call(body) {
                                     }
                                 }
                             }
-                            stage('check analise') {
+                            stage('check analysis') {
                                 environment {
                                     SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
                                     SONAR_TOKEN = credentials('sonar-token')
