@@ -135,6 +135,11 @@ def call(body) {
                                     SONAR_CRED = credentials('user-pass-credential-sonar-credentials')
                                     SONAR_TOKEN = credentials('sonar-token')
                                 }
+                                agent {
+                                    docker {
+                                        image "${agentName}"
+                                    }
+                                }                
                                 steps {
                                     script {
                                         sonarLib.qualityGate(artifactId)
