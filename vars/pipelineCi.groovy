@@ -5,7 +5,6 @@ def call(body) {
     body()
 
     def agentName
-    def agentArguments
 
     pipeline {
         agent any
@@ -22,7 +21,6 @@ def call(body) {
                         new org.mauro.LibLoader().loadLib()
                         templateLib.configUsingManifest()
                         agentName = templateLib.getTemplateAgent()
-                        agentArguments = jenkinsLib.getAgentArguments()
                     }
                 }
             }
@@ -129,7 +127,6 @@ def call(body) {
                                 agent {
                                     docker {
                                         image "${agentName}"
-                                        args "${agentArguments}"
                                     }
                                 }                
                                 steps {
