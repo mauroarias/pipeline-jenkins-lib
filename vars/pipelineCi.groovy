@@ -75,11 +75,7 @@ def call(body) {
                 }                
                 steps {
                     script {
-                        templateLib.build()
-                        outFolder = templateLib.getOutFolder()
-                        jenkinsLib.stash('codeBuilt', "${outFolder}**/*", '')
-                        jenkinsLib.archiveArtifacts("${outFolder}${app}.jar")
-                        templateLib.publishTestCoverageReport()
+                        templateLib.build(app)
                     }
                 }
             }
@@ -89,9 +85,8 @@ def call(body) {
                 }
                 steps {
                     script {
-                        unstash 'codeBuilt'
-                        sh "docker build -t ${dockerLib.getDockerRepositoryDev()}/${image} ." 
-                    }
+                        dockerLib.buildDockerImage(image)
+                     }
                 }
             }
             stage('Quality') {
@@ -99,10 +94,10 @@ def call(body) {
                     expression { doWeBuild() }
                 }
                 parallel {
-                    stage('Test') {
+                    stage('integration test') {
                         steps {
                             script {
-                                sh "echo 'add tests'"
+                                testLib.runIntegrationTests()
                             }
                         }
                     }
@@ -132,7 +127,7 @@ def call(body) {
                                 }                
                                 steps {
                                     script {
-                                        sonarLib.pushSonarArtifact(artifactId)
+                                        sonarLib.pushSonarAnalysis(artifactId)
                                     }
                                 }
                             }
@@ -150,16 +145,26 @@ def call(body) {
                         }
                     }       
                     stage('Dependency check') {
+                        agent {
+                            docker {
+                                image "${agentName}"
+                            }
+                        }                
                         steps {
                             script {
-                                sh "echo 'add dependency check'"
+                                testLib.runDependencyCheck()
                             }
                         }
                     }       
                     stage('Mutation tests') {
+                        agent {
+                            docker {
+                                image "${agentName}"
+                            }
+                        }                
                         steps {
                             script {
-                                sh "echo 'add mutation test'"
+                                testLib.runMutationTests()
                             }
                         }
                     }       
