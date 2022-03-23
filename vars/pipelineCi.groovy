@@ -127,6 +127,7 @@ def call(body) {
                                 agent {
                                     docker {
                                         image "${agentName}"
+                                        args '−−network host'
                                     }
                                 }                
                                 steps {
