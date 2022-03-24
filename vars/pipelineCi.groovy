@@ -138,6 +138,7 @@ def call(body) {
                                 }
                                 steps {
                                     script {
+                                        sh "sleep 3"
                                         sonarLib.qualityGate(artifactId)
                                     }
                                 }
@@ -178,8 +179,20 @@ def call(body) {
                     stage('Image') {
                         steps {
                             script {
-                                sh "docker push ${dockerLib.getDockerRepositoryDev()}/${image}"
-                                sh "docker image tag ${dockerLib.getDockerRepositoryDev()}/${image} ${dockerLib.getDockerRepositoryDev()}/${artifactId}:latest"
+                                dockerLib.pushDockerImage(image)
+                            }
+                        }
+                    }
+                }
+            }
+            stage('Deployment') {
+                when {
+                    branch 'develop'
+                }
+                parallel {
+                    stage('Image') {
+                        steps {
+                            script {
                             }
                         }
                     }
