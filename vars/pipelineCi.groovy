@@ -193,6 +193,7 @@ def call(body) {
                     stage('Image') {
                         steps {
                             script {
+                                sh "echo 'to deployment'"
                             }
                         }
                     }
