@@ -179,7 +179,7 @@ def call(body) {
                     stage('Image') {
                         steps {
                             script {
-                                dockerLib.pushDockerImage(image)
+                                dockerLib.pushDockerImageDev(image)
                             }
                         }
                     }
