@@ -172,11 +172,11 @@ def call(body) {
                 }
             }
             stage('Pushing') {
-                when {
-                    branch 'develop'
-                }
                 parallel {
-                    stage('Image') {
+                    stage('develop') {
+                        when {
+                            branch 'develop'
+                        }
                         steps {
                             script {
                                 dockerLib.pushDockerImageDev(image)
@@ -186,11 +186,11 @@ def call(body) {
                 }
             }
             stage('Deployment') {
-                when {
-                    branch 'develop'
-                }
                 parallel {
-                    stage('Image') {
+                    stage('Develop') {
+                        when {
+                            branch 'develop'
+                        }
                         steps {
                             script {
                                 sh "echo 'to deployment'"
