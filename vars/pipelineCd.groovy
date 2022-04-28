@@ -1,7 +1,5 @@
 def call(body) {
-    def params= [:]
     body.resolveStrategy = Closure.DELEGATE_FIRST
-    body.delegate = params
     body()
 
     pipeline {
@@ -10,68 +8,143 @@ def call(body) {
             timestamps()
             disableConcurrentBuilds()
         }
+        parameters {
+            booleanParam(defaultValue: false, name: 'manualTrigger', description: 'manual trigger')
+            string(defaultValue: '', name: 'gitDstRemote', description: 'dont use this entry in manual steps')
+            string(defaultValue: '', name: 'projectName', description: 'dont use this entry in manual steps')
+            string(defaultValue: '', name: 'serviceName', description: 'dont use this entry in manual steps')
+        }    
         stages {
-            stage('Setup') {
-                parallel {
-                    stage('Initialize') {
-                        steps {
-                            script { 
-                                projectName = env.JOB_NAME.split('/')[0]
-                                sh "echo env.JOB_NAME"
-                                sh "echo 'appName: ${appName}'"
-                                sh "echo 'project name: ${projectName}' | sed 's/PRJ-//g'"
-
-                                def loadingLib = new org.mauro.LibLoader()
-                                loadingLib.loadLib()
-
-                                appversion = build.getAppVersion()
-                                serviceName = build.getAppServiceName()
-                                artifactId = build.getArtifactId()
-                                groupId = build.getgroupId()
-                                app = "${serviceName}-${appversion}"
-                            }
-                        }
-                    }
-                    stage('Branch validation') {
-                        steps {
-                            script { 
-                                if (env.CHANGE_TARGET.equals("${const.STAGE_BRANCH}") && !env.CHANGE_TARGET.equals("${const.DEV_BRANCH}")) {
-                                    error("You must merge to '${const.STAGE_BRANCH}' from '${const.DEV_BRANCH}'...!")
-                                }
-                                if (env.CHANGE_TARGET.equals("${const.PROD_BRANCH}") && !env.CHANGE_TARGET.equals("${const.STAGE_BRANCH}")) {
-                                    error("You must merge to '${const.PROD_BRANCH}' from '${const.STAGE_BRANCH}'...!")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            stage('Build Application') {
-                agent {
-                    docker {
-                        image 'maven:3.8.1-adoptopenjdk-11'
-                    }
-                }                
+            stage('Initialize') {
                 when {
-                    expression { weBuild() }
+                    expression { 
+                        return params.manualTrigger || (!params.gitDstRemote.equals('') && !params.projectName.equals('') && !params.serviceName.equals(''))
+                    }
                 }
                 steps {
-                    sh 'mvn clean package'
-                    jenkins.stash('codeBuilt', 'target/*')
-                    jenkins.archiveArtifacts("target/${app}")
-                    jenkins.publishHTML('code coverage', 'code coverage report', 'target/jacoco-report/', 'index.html')
+                    script { 
+                        sh "echo 'manual trigger: ${params.manualTrigger}'"
+                        new org.mauro.LibLoader().loadLib()
+                        jenkinsLib.downloadJenkinsCli()
+                    }
                 }
             }
-            stage('Build Docker Image') {
-                when {
-                    expression { weBuild() }
-                }
-                steps {
-                    echo '=== Building Docker Image ==='
-                    sh 'mvn fabric8:build'
-                }
-            }
-        }
+            // stage('validate') {
+            //     when {
+            //         expression { 
+            //             return (!params.gitDstRemote.equals('') && !params.projectName.equals('') && !params.serviceName.equals(''))
+            //         }
+            //     }
+            //     steps {
+            //         script { 
+            //             gitDstRemote = params.gitDstRemote
+            //             projectName = params.projectName
+            //             serviceName = params.serviceName
+            //             sh "echo 'manual trigger: ${params.manualTrigger}'"
+            //             sh "echo 'git repository remote: ${gitDstRemote}'"
+            //             sh "echo 'project: ${projectName}'"
+            //             sh "echo 'service name: ${serviceName}'"
+            //         }
+            //     }
+            // }
+            // stage('choose git remote') {
+            //     when {
+            //         expression { 
+            //             return params.manualTrigger
+            //         }
+            //     }
+            //     steps {
+            //         timeout(time: 3, unit: 'MINUTES') {
+            //             script {
+            //                 inputGitRemote = input message: 'choose git remote', ok: 'Next',
+            //                 parameters: [
+            //                     choice(name: 'gitDstRemoteCi', choices: ['gitHub', 'bitBucket']),
+            //                     string(name: 'x')]
+            //                 gitDstRemote = inputGitRemote.gitDstRemoteCi
+            //                 sh "echo 'git repository remote: ${gitDstRemote}'"
+            //             }
+            //         }
+            //     }
+            // }
+            // stage('choose project') {
+            //     when {
+            //         expression { 
+            //             return params.manualTrigger
+            //         }
+            //     }
+            //     steps {
+            //         timeout(time: 3, unit: 'MINUTES') {
+            //             script { 
+            //                 inputProjectsCi = input message: 'choose project', ok: 'Next',
+            //                 parameters: [
+            //                     choice(choices: jenkinsLib.getprojects(), name: 'projectsCi', description: 'choose project'),
+            //                     booleanParam(defaultValue: false, name: 'newProjectCi', description: 'create a new project'),
+            //                     string(defaultValue: '', name: 'project', trim: true, required: true, description: 'new project name')]
+            //                 if (inputProjectsCi.newProjectCi) {
+            //                     if ("${inputProjectsCi.project}" == '') {   
+            //                         error('new project must be defined...!')
+            //                     }
+            //                     jenkinsLib.createProjectIfNotExits(inputProjectsCi.project)
+            //                     projectName = inputProjectsCi.project
+            //                 } else {
+            //                     projectName = inputProjectsCi.projectsCi
+            //                 }
+            //                 sh "echo 'project: ${projectName}'"
+            //             }
+            //         }
+            //     }
+            // }
+            // stage('choose service name') {
+            //     when {
+            //         expression { 
+            //             return params.manualTrigger
+            //         }
+            //     }
+            //     environment {
+            //         GIT_HUB_CRED = credentials('user-pass-credential-github-credentials')
+            //         BIT_BUCKET_CRED = credentials('user-pass-credential-bitbucket-credentials')
+            //     }
+            //     steps {
+            //         timeout(time: 3, unit: 'MINUTES') {
+            //             script {
+            //                 inputRepo = input message: "choose service name", ok: 'Next',
+            //                 parameters: [
+            //                     choice(choices: gitLib.getRepos(gitDstRemote, projectName), name: 'repo', description: 'choose service name'),
+            //                     string(name: 'x')]
+            //                 serviceName = inputRepo.repo
+            //                 sh "echo 'service name: ${serviceName}'"
+            //             }
+            //         }
+            //     }
+            // }
+            // stage('create jenkins job') {
+            //     when {
+            //         expression { 
+            //             return params.manualTrigger || (!params.gitDstRemote.equals('') && !params.projectName.equals('') && !params.serviceName.equals(''))
+            //         }
+            //     }
+            //     environment {
+            //         GIT_HUB_CRED = credentials('user-pass-credential-github-credentials')
+            //         BIT_BUCKET_CRED = credentials('user-pass-credential-bitbucket-credentials')
+            //     }
+            //     steps {
+            //         script { 
+            //             jenkinsLib.createJenkinsMultibranchJobWithLib(gitDstRemote, serviceName, projectName, serviceName)
+
+
+            //                                 script {
+            //             gitLib.cloneRepo("${serviceName}")
+            //             dir("${serviceName}") {
+            //                 def tools = new org.mauro.Tools() 
+            //                 typeLib = "${tools.getCdType()}"
+            //                 libVersion = tools.getCdVersion()
+            //             }
+            //             jenkinsLib.createPipelineJobWithLib("${serviceName}-deployment", "${typeLib}", "${libVersion}", "${projectName}", "${serviceName}")
+
+            //         }
+            //     }
+            // }
+        }   
         post {
             // Clean after build
             always {
@@ -80,12 +153,4 @@ def call(body) {
             }
         }
     }
-}
-
-def weBuild () {
-    return (!env.BRANCH_NAME.equals("${const.PROD_BRANCH}") && !env.BRANCH_NAME.equals("${const.STAGE_BRANCH}") && !isPrToStageOrProd())
-}
-
-def isPrToStageOrProd () {
-    return (env.CHANGE_TARGET.equals("${const.PROD_BRANCH}") || env.CHANGE_TARGET.equals("${const.STAGE_BRANCH}"))
 }
