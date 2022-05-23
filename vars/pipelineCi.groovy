@@ -34,6 +34,7 @@ def call(body) {
                         }                
                         steps {
                             script { 
+                                dockerLib.configRepository ()
                                 appversion = templateLib.getAppVersion()
                                 serviceName = templateLib.getAppServiceName()
                                 artifactId = templateLib.getArtifactId()
