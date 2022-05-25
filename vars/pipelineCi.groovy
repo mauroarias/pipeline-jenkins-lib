@@ -34,7 +34,6 @@ def call(body) {
                         }                
                         steps {
                             script { 
-                                dockerLib.configRepository ()
                                 appversion = templateLib.getAppVersion()
                                 serviceName = templateLib.getAppServiceName()
                                 artifactId = templateLib.getArtifactId()
@@ -48,6 +47,7 @@ def call(body) {
                                 sh "echo 'group id: ${groupId}'"
                                 sh "echo 'app: ${app}'"
                                 sh "echo 'image: ${image}'"
+                                dockerLib.configRepository()
                             }
                         }
                     }
@@ -177,6 +177,9 @@ def call(body) {
                     stage('develop') {
                         when {
                             branch 'develop'
+                        }
+                        environment {
+                            REGISTRY_CRED = credentials('user-pass-credential-registry-credentials')
                         }
                         steps {
                             script {
