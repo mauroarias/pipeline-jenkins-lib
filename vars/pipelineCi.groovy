@@ -47,7 +47,7 @@ def call(body) {
                                 sh "echo 'group id: ${groupId}'"
                                 sh "echo 'app: ${app}'"
                                 sh "echo 'image: ${image}'"
-                                dockerLib.configRepository()
+                                dockerLib.config()
                             }
                         }
                     }
